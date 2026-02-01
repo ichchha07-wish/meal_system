@@ -1,0 +1,609 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Distribution System - SDG Goal 2: Zero Hunger</title>
+    <style>
+       /* ==================== SPLASH SCREEN ==================== */
+
+        .splash-container {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 1;
+            animation: fadeOutSplash 0.6s ease-in-out 2.2s forwards;
+            pointer-events: none;
+        }
+
+        /* Main content */
+        .splash-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            animation: slideUp 0.8s ease-out;
+        }
+
+        /* Logo */
+        .splash-logo {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: bounce 1s ease-in-out infinite;
+        }
+
+        /* Title */
+        .splash-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        /* Subtitle */
+        .splash-subtitle {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 30px;
+        }
+
+        /* Loader wrapper (IMPORTANT FIX) */
+        .splash-loader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 22px;
+        }
+
+        /* Progress bar */
+        .splash-progress {
+            width: 220px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .splash-progress-bar {
+            height: 100%;
+            width: 0%;
+            background: #fff;
+            border-radius: 10px;
+            animation: progress 2s ease-in-out forwards;
+        }
+
+        /* Spinner */
+        .splash-spinner {
+            width: 42px;
+            height: 42px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        /* ==================== ANIMATIONS ==================== */
+
+        @keyframes fadeOutSplash {
+            to {
+                opacity: 0;
+                visibility: hidden;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(25px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-18px);
+            }
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes progress {
+            from {
+                width: 0%;
+            }
+            to {
+                width: 100%;
+            }
+        }
+
+
+        /* ==================== HOME PAGE ==================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #2c3e50;
+            background: #f8f9fa;
+        }
+
+        /* NAVBAR */
+        .navbar {
+            background: white;
+            padding: 15px 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar-brand {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .navbar-brand span {
+            font-size: 28px;
+        }
+
+        .navbar-buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-login {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-login:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .btn-register {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-register:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        /* HERO SECTION */
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 100px 20px;
+            text-align: center;
+        }
+
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+            animation: slideUp 0.8s ease-out 2s both;
+        }
+
+        .hero-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: float 3s ease-in-out infinite 2s;
+        }
+
+        .hero-title {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            letter-spacing: -1px;
+        }
+
+        .hero-subtitle {
+            font-size: 20px;
+            margin-bottom: 30px;
+            opacity: 0.95;
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-large {
+            padding: 15px 40px;
+            font-size: 16px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: white;
+            color: #667eea;
+            font-weight: 700;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-3px);
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+
+        /* FEATURES SECTION */
+        .features {
+            max-width: 1200px;
+            margin: -80px auto 80px;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transition: all 0.3s ease;
+            animation: slideUp 0.8s ease-out 2.2s both;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        }
+
+        .feature-icon {
+            font-size: 50px;
+            margin-bottom: 20px;
+        }
+
+        .feature-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .feature-text {
+            color: #7f8c8d;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        /* STATS SECTION */
+        .stats {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 80px 20px;
+        }
+
+        .stats-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .stats-title {
+            font-size: 36px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+        }
+
+        .stat-item {
+            text-align: center;
+            animation: slideUp 0.8s ease-out 2.4s both;
+        }
+
+        .stat-number {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 16px;
+            opacity: 0.95;
+        }
+
+        /* FOOTER */
+        .footer {
+            background: #2c3e50;
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+
+        .footer-section h4 {
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .footer-section p,
+        .footer-section a {
+            font-size: 14px;
+            opacity: 0.8;
+            line-height: 1.8;
+            text-decoration: none;
+            color: white;
+        }
+
+        .footer-section a:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            padding-top: 30px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 32px;
+            }
+
+            .hero-subtitle {
+                font-size: 16px;
+            }
+
+            .navbar-buttons {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .btn-login, .btn-register {
+                width: 100%;
+                text-align: center;
+            }
+
+            .hero-cta {
+                flex-direction: column;
+            }
+
+            .btn-large {
+                width: 100%;
+            }
+
+            .stats-title {
+                font-size: 28px;
+            }
+
+            .stat-number {
+                font-size: 36px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- SPLASH SCREEN -->
+    <div class="splash-container">
+        <div class="splash-content">
+            <div class="splash-logo">🍽️</div>
+
+            <h1 class="splash-title">Food Distribution System</h1>
+            <p class="splash-subtitle">Eliminating Hunger Together</p>
+
+            <!-- Loader wrapper (IMPORTANT) -->
+            <div class="splash-loader">
+                <div class="splash-progress">
+                    <div class="splash-progress-bar"></div>
+                </div>
+
+                <div class="splash-spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NAVIGATION BAR -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <span>🍽️</span>
+                Food Distribution System
+            </div>
+            <div class="navbar-buttons">
+                <a href="/login/" class="btn btn-login">Login</a>
+                <a href="/register/" class="btn btn-register">Register Now</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO SECTION -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-icon">🌍</div>
+            <h1 class="hero-title">Working Towards SDG Goal 2</h1>
+            <p class="hero-subtitle">Zero Hunger - Connecting Food Providers with Communities in Need</p>
+            <div class="hero-cta">
+                <a href="/register/" class="btn btn-large btn-primary">Get Started</a>
+                <a href="/login/" class="btn btn-large btn-secondary">Login to Your Account</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- FEATURES SECTION -->
+    <section class="features">
+        <div class="feature-card">
+            <div class="feature-icon">🛵</div>
+            <h3 class="feature-title">For Beneficiaries</h3>
+            <p class="feature-text">Browse nearby meals, check availability, and claim food in your area. Access nutritious meals shared by generous providers.</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon">👨‍🍳</div>
+            <h3 class="feature-title">For Providers</h3>
+            <p class="feature-text">Share surplus meals with your community. Manage food distribution, reach people in need, and make a real difference.</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon">🔐</div>
+            <h3 class="feature-title">Secure & Safe</h3>
+            <p class="feature-text">OTP verification, role-based access, and data encryption. Your safety and privacy are our top priority.</p>
+        </div>
+    </section>
+
+    <!-- STATS SECTION -->
+    <section class="stats">
+        <div class="stats-container">
+            <h2 class="stats-title">Making a Global Impact</h2>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number">1000+</div>
+                    <div class="stat-label">Meals Distributed</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">500+</div>
+                    <div class="stat-label">Active Users</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">50+</div>
+                    <div class="stat-label">Meal Providers</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">99%</div>
+                    <div class="stat-label">Satisfaction Rate</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>About Us</h4>
+                    <p>Food Distribution System is a platform dedicated to eliminating hunger and connecting communities with available food resources.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <a href="/login/">Login</a><br>
+                    <a href="/register/">Register</a><br>
+                    <a href="/">Home</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Contact</h4>
+                    <p>Email: support@foodsystem.com</p>
+                    <p>Phone: +91 XXXX XXX XXX</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Food Distribution System. All rights reserved. | SDG Goal 2: Zero Hunger</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Auto-redirect after splash screen (2 seconds)
+        // This happens automatically - page just loads normally
+        // Splash screen fades out via CSS animation after 2s
+        
+        // Optional: Add smooth scroll behavior
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

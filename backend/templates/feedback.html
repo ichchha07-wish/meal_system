@@ -1,0 +1,380 @@
+{% extends "base.html" %}
+
+{% block title %}Feedback - Food Distribution System{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+
+<div class="page-container">
+    <!-- Header -->
+    <header class="page-header">
+        <button class="btn-back" onclick="window.location.href='/dashboard/beneficiary/'">
+            ← Back
+        </button>
+        <h1>💬 Feedback</h1>
+        <div></div>
+    </header>
+
+    <!-- Feedback Content -->
+    <div class="content-card">
+        <div class="success-msg" id="successMsg" style="display: none;">
+            ✅ Thank you for your feedback! We appreciate your input.
+        </div>
+
+        <form id="feedbackForm">
+            <!-- Rating Section -->
+            <div class="form-section">
+                <h3>How was your experience?</h3>
+                <div class="star-rating" id="starRating">
+                    <span class="star" data-rating="1">⭐</span>
+                    <span class="star" data-rating="2">⭐</span>
+                    <span class="star" data-rating="3">⭐</span>
+                    <span class="star" data-rating="4">⭐</span>
+                    <span class="star" data-rating="5">⭐</span>
+                </div>
+                <input type="hidden" id="rating" name="rating" value="0">
+            </div>
+
+            <!-- Category -->
+            <div class="form-section">
+                <label>Feedback Category</label>
+                <select id="category" class="form-control" required>
+                    <option value="">Select category</option>
+                    <option value="meal_quality">Meal Quality</option>
+                    <option value="service">Service</option>
+                    <option value="app_experience">App Experience</option>
+                    <option value="provider">Provider</option>
+                    <option value="suggestion">Suggestion</option>
+                    <option value="complaint">Complaint</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+
+            <!-- Feedback Message -->
+            <div class="form-section">
+                <label>Your Feedback</label>
+                <textarea 
+                    id="message" 
+                    class="form-control" 
+                    rows="6" 
+                    placeholder="Tell us about your experience..."
+                    required
+                ></textarea>
+            </div>
+
+            <!-- Quick Suggestions -->
+            <div class="form-section">
+                <label>Quick Suggestions (Optional)</label>
+                <div class="chip-container">
+                    <span class="chip" onclick="addSuggestion('More variety needed')">More variety needed</span>
+                    <span class="chip" onclick="addSuggestion('Great service')">Great service</span>
+                    <span class="chip" onclick="addSuggestion('Improve timing')">Improve timing</span>
+                    <span class="chip" onclick="addSuggestion('Better location info')">Better location info</span>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn-submit" id="submitBtn">
+                Submit Feedback
+            </button>
+        </form>
+
+        <!-- Recent Feedback Stats -->
+        <div class="stats-section">
+            <h3>Community Feedback Stats</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value">4.5</div>
+                    <div class="stat-label">Average Rating</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">287</div>
+                    <div class="stat-label">Total Feedback</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">94%</div>
+                    <div class="stat-label">Satisfaction</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+:root {
+    --primary: #4CAF50;
+    --secondary: #5AB9EA;
+    --danger: #E74C3C;
+    --text-dark: #2C3E50;
+    --text-light: #7F8C8D;
+    --bg: #ECF0F1;
+    --white: #FFFFFF;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+}
+
+.page-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.page-header {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.page-header h1 {
+    font-size: 24px;
+    color: var(--text-dark);
+}
+
+.btn-back {
+    background: var(--secondary);
+    color: var(--white);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.btn-back:hover {
+    transform: translateY(-2px);
+}
+
+.content-card {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.success-msg {
+    background: #d4edda;
+    color: #155724;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.form-section {
+    margin-bottom: 25px;
+}
+
+.form-section h3 {
+    color: var(--text-dark);
+    margin-bottom: 15px;
+    font-size: 18px;
+}
+
+.form-section label {
+    display: block;
+    color: var(--text-dark);
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.star-rating {
+    display: flex;
+    gap: 10px;
+    font-size: 40px;
+}
+
+.star {
+    cursor: pointer;
+    filter: grayscale(100%);
+    transition: all 0.3s;
+}
+
+.star.active,
+.star:hover {
+    filter: grayscale(0%);
+    transform: scale(1.1);
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid var(--bg);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: all 0.3s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--secondary);
+}
+
+textarea.form-control {
+    resize: vertical;
+    min-height: 120px;
+}
+
+.chip-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.chip {
+    background: var(--bg);
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.chip:hover {
+    background: var(--secondary);
+    color: var(--white);
+}
+
+.btn-submit {
+    width: 100%;
+    background: var(--primary);
+    color: var(--white);
+    border: none;
+    padding: 15px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-submit:hover {
+    background: #45a049;
+    transform: translateY(-2px);
+}
+
+.stats-section {
+    margin-top: 40px;
+    padding-top: 30px;
+    border-top: 2px solid var(--bg);
+}
+
+.stats-section h3 {
+    color: var(--text-dark);
+    margin-bottom: 20px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 20px;
+    background: var(--bg);
+    border-radius: 8px;
+}
+
+.stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: var(--text-light);
+    text-transform: uppercase;
+}
+
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+let selectedRating = 0;
+
+// Star rating
+document.querySelectorAll('.star').forEach(star => {
+    star.addEventListener('click', function() {
+        selectedRating = parseInt(this.dataset.rating);
+        document.getElementById('rating').value = selectedRating;
+        
+        document.querySelectorAll('.star').forEach((s, index) => {
+            if (index < selectedRating) {
+                s.classList.add('active');
+            } else {
+                s.classList.remove('active');
+            }
+        });
+    });
+});
+
+// Add suggestion to textarea
+function addSuggestion(text) {
+    const textarea = document.getElementById('message');
+    const current = textarea.value;
+    if (current) {
+        textarea.value = current + '\n' + text;
+    } else {
+        textarea.value = text;
+    }
+}
+
+// Form submission
+document.getElementById('feedbackForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const rating = document.getElementById('rating').value;
+    const category = document.getElementById('category').value;
+    const message = document.getElementById('message').value;
+    
+    if (rating === '0') {
+        alert('Please select a rating');
+        return;
+    }
+    
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+    
+    // Simulate submission
+    setTimeout(() => {
+        document.getElementById('successMsg').style.display = 'block';
+        document.getElementById('feedbackForm').reset();
+        selectedRating = 0;
+        document.querySelectorAll('.star').forEach(s => s.classList.remove('active'));
+        
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Feedback';
+        
+        setTimeout(() => {
+            document.getElementById('successMsg').style.display = 'none';
+        }, 3000);
+    }, 1000);
+});
+</script>
+
+{% endblock %}

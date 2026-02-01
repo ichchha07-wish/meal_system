@@ -1,0 +1,442 @@
+{% extends "base.html" %}
+
+{% block title %}Verify OTP - Food Distribution System{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card otp-card">
+        <!-- Logo Section -->
+        <div class="logo-container">
+            <div class="logo-icon">🔐</div>
+        </div>
+        
+        <!-- Title -->
+        <h1 class="auth-title">Verify OTP</h1>
+        <p class="auth-subtitle" id="otpSubtitle">Enter the code sent to your phone</p>
+        
+        <!-- OTP Form -->
+        <form id="otpForm" class="auth-form">
+            {% csrf_token %}
+            
+            <div class="otp-input-container">
+                <input type="text" class="otp-input" id="otp1" maxlength="1" pattern="[0-9]" required>
+                <input type="text" class="otp-input" id="otp2" maxlength="1" pattern="[0-9]" required>
+                <input type="text" class="otp-input" id="otp3" maxlength="1" pattern="[0-9]" required>
+                <input type="text" class="otp-input" id="otp4" maxlength="1" pattern="[0-9]" required>
+                <input type="text" class="otp-input" id="otp5" maxlength="1" pattern="[0-9]" required>
+                <input type="text" class="otp-input" id="otp6" maxlength="1" pattern="[0-9]" required>
+            </div>
+            
+            <!-- OTP Status Feedback -->
+            <div id="otpStatus" class="otp-status" style="display: none; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 16px; font-weight: 600;">
+            </div>
+            
+            <!-- Timer -->
+            <div class="otp-timer" id="otpTimer">
+                <span id="timerText">OTP expires in: <strong id="countdown">10:00</strong></span>
+            </div>
+            
+            <!-- Error Message -->
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+            
+            <!-- Success Message -->
+            <div id="successMessage" class="success-message" style="display: none;"></div>
+            
+            <!-- Verify Button -->
+            <button type="submit" class="btn btn-primary" id="verifyBtn">
+                <span class="btn-text">Verify OTP</span>
+                <span class="btn-loader" style="display: none;">🔄</span>
+            </button>
+            
+            <!-- Resend OTP -->
+            <div class="resend-container">
+                <button type="button" class="btn-link" id="resendBtn" disabled>
+                    Resend OTP <span id="resendCountdown">(60s)</span>
+                </button>
+            </div>
+        </form>
+        
+        <!-- Back Link -->
+        <div class="auth-footer">
+            <a href="/login/" class="link-secondary">← Back to Login</a>
+        </div>
+    </div>
+</div>
+
+<style>
+/* OTP Status Styles */
+.otp-status {
+    animation: slideDown 0.3s ease;
+}
+
+.otp-status.valid {
+    background-color: #d1fae5;
+    color: #065f46;
+    border-left: 4px solid #10b981;
+}
+
+.otp-status.invalid {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border-left: 4px solid #ef4444;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+
+<script>
+// ============================================================
+// OTP VERIFICATION PAGE
+// ============================================================
+
+// Check if user came from registration or login
+const userId = sessionStorage.getItem('pending_user_id') || sessionStorage.getItem('pending_login_user_id');
+const username = sessionStorage.getItem('pending_username') || sessionStorage.getItem('pending_login_username');
+const purpose = sessionStorage.getItem('otp_purpose');
+
+if (!userId) {
+    window.location.href = '/login/';
+}
+
+// Update subtitle based on purpose
+if (purpose === 'registration') {
+    document.getElementById('otpSubtitle').textContent = 'Verify your phone number to complete registration';
+} else {
+    document.getElementById('otpSubtitle').textContent = 'Enter OTP to complete login';
+}
+
+// ============================================================
+// OTP INPUT AUTO-FOCUS LOGIC
+// ============================================================
+const otpInputs = document.querySelectorAll('.otp-input');
+const otpStatus = document.getElementById('otpStatus');
+
+otpInputs.forEach((input, index) => {
+    input.addEventListener('input', (e) => {
+        // ✅ Clear status when user starts typing
+        otpStatus.style.display = 'none';
+        
+        const value = e.target.value;
+        
+        // Only allow numbers
+        if (!/^[0-9]$/.test(value)) {
+            e.target.value = '';
+            return;
+        }
+        
+        // ✅ AUTO-MOVE TO NEXT INPUT after typing
+        if (value.length === 1 && index < otpInputs.length - 1) {
+            otpInputs[index + 1].focus();
+        }
+    });
+    
+    input.addEventListener('keydown', (e) => {
+        // Handle Backspace - move to previous input
+        if (e.key === 'Backspace' && e.target.value === '') {
+            if (index > 0) {
+                otpInputs[index - 1].focus();
+            }
+        }
+        
+        // Handle Delete key - clear current and move to next
+        if (e.key === 'Delete' && e.target.value === '') {
+            if (index < otpInputs.length - 1) {
+                otpInputs[index + 1].focus();
+            }
+        }
+        
+        // Allow Tab navigation
+        if (e.key === 'Tab') {
+            return;
+        }
+        
+        // Prevent non-numeric characters
+        if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
+            e.preventDefault();
+        }
+    });
+    
+    input.addEventListener('paste', (e) => {
+        // ✅ Handle paste - auto-fill all fields
+        e.preventDefault();
+        const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+        const digits = pastedText.replace(/\D/g, '').split('');
+        
+        if (digits.length >= 6) {
+            otpInputs.forEach((inp, i) => {
+                inp.value = digits[i] || '';
+            });
+            otpInputs[5].focus();
+            showOtpStatus('✓ OTP pasted successfully', 'valid');
+        }
+    });
+});
+
+// Focus first input on page load
+otpInputs[0].focus();
+
+// ============================================================
+// OTP EXPIRY COUNTDOWN (10 minutes)
+// ============================================================
+let expiryTime = 10 * 60; // 10 minutes in seconds
+const countdownElement = document.getElementById('countdown');
+
+const expiryInterval = setInterval(() => {
+    expiryTime--;
+    
+    const minutes = Math.floor(expiryTime / 60);
+    const seconds = expiryTime % 60;
+    
+    countdownElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    
+    if (expiryTime <= 0) {
+        clearInterval(expiryInterval);
+        showError('OTP has expired. Please request a new one.');
+        document.getElementById('verifyBtn').disabled = true;
+    }
+}, 1000);
+
+// ============================================================
+// RESEND OTP COUNTDOWN (60 seconds)
+// ============================================================
+let resendTime = 60;
+const resendBtn = document.getElementById('resendBtn');
+const resendCountdown = document.getElementById('resendCountdown');
+
+const resendInterval = setInterval(() => {
+    resendTime--;
+    resendCountdown.textContent = `(${resendTime}s)`;
+    
+    if (resendTime <= 0) {
+        clearInterval(resendInterval);
+        resendBtn.disabled = false;
+        resendCountdown.textContent = '';
+    }
+}, 1000);
+
+// ============================================================
+// VERIFY OTP HANDLER
+// ============================================================
+let isVerifying = false;
+
+document.getElementById('otpForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    // ✅ Prevent double submission
+    if (isVerifying) return;
+    isVerifying = true;
+    
+    const verifyBtn = document.getElementById('verifyBtn');
+    const btnText = verifyBtn.querySelector('.btn-text');
+    const btnLoader = verifyBtn.querySelector('.btn-loader');
+    const errorMessage = document.getElementById('errorMessage');
+    const successMessage = document.getElementById('successMessage');
+    
+    // Get OTP code
+    let otpCode = '';
+    otpInputs.forEach(input => {
+        otpCode += input.value;
+    });
+    
+    // Validate
+    if (otpCode.length !== 6) {
+        showOtpStatus('⚠ Please enter complete 6-digit OTP', 'invalid');
+        isVerifying = false;
+        return;
+    }
+    
+    if (!/^[0-9]{6}$/.test(otpCode)) {
+        showOtpStatus('⚠ OTP must contain only numbers', 'invalid');
+        isVerifying = false;
+        return;
+    }
+    
+    // Hide messages
+    errorMessage.style.display = 'none';
+    successMessage.style.display = 'none';
+    
+    // Show loading
+    verifyBtn.disabled = true;
+    btnText.style.display = 'none';
+    btnLoader.style.display = 'inline';
+    
+    try {
+        console.log('Verifying OTP:', otpCode);
+        
+        // Determine endpoint based on purpose
+        let endpoint, redirectUrl;
+        
+        if (purpose === 'registration') {
+            endpoint = '/api/users/verify-registration/';
+        } else {
+            endpoint = '/api/users/login/verify-otp/';
+        }
+        
+        // Get CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                user_id: userId,
+                otp_code: otpCode
+            })
+        });
+        
+        const data = await response.json();
+        
+        console.log('Verification response:', data);
+        
+        if (response.ok && data.success) {
+            // ✅ Show success with OTP
+            showOtpStatus('✓ OTP Verified Successfully!', 'valid');
+            
+            // Clear session storage
+            sessionStorage.removeItem('pending_user_id');
+            sessionStorage.removeItem('pending_login_user_id');
+            sessionStorage.removeItem('pending_username');
+            sessionStorage.removeItem('pending_login_username');
+            sessionStorage.removeItem('otp_purpose');
+            
+            if (purpose === 'registration') {
+                successMessage.textContent = 'Registration verified successfully! Redirecting to login...';
+                successMessage.style.display = 'block';
+                
+                setTimeout(() => {
+                    window.location.href = '/login/';
+                }, 2000);
+            } else {
+                // ✅ SMART REDIRECT based on user role
+                const userRole = data.user.role;
+                
+                successMessage.innerHTML = `<span style="color: #065f46;">✓ Login successful! Redirecting to ${userRole} dashboard...</span>`;
+                successMessage.style.display = 'block';
+                
+                // Clear counters
+                clearInterval(expiryInterval);
+                clearInterval(resendInterval);
+                
+                setTimeout(() => {
+                    if (userRole === 'beneficiary') {
+                        window.location.href = '/dashboard/beneficiary/';
+                    } else if (userRole === 'provider') {
+                        window.location.href = '/dashboard/provider/';
+                    }
+                }, 2000);
+            }
+        } else {
+            // ✅ Show which attempts remaining
+            showOtpStatus(`✗ ${data.error || 'Invalid OTP'}`, 'invalid');
+            
+            if (data.error.includes('attempts')) {
+                errorMessage.textContent = data.error;
+                errorMessage.style.display = 'block';
+            }
+        }
+    } catch (error) {
+        console.error('OTP verification error:', error);
+        showOtpStatus('✗ Connection error. Please try again.', 'invalid');
+    } finally {
+        isVerifying = false;
+        verifyBtn.disabled = false;
+        btnText.style.display = 'inline';
+        btnLoader.style.display = 'none';
+    }
+});
+
+// ============================================================
+// RESEND OTP HANDLER
+// ============================================================
+resendBtn.addEventListener('click', async () => {
+    resendBtn.disabled = true;
+    const errorMessage = document.getElementById('errorMessage');
+    errorMessage.style.display = 'none';
+    
+    try {
+        // Get CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        const response = await fetch('/api/users/resend-otp/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                user_id: userId
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            showOtpStatus('✓ New OTP sent successfully!', 'valid');
+            
+            // Clear inputs
+            otpInputs.forEach(inp => inp.value = '');
+            otpInputs[0].focus();
+            
+            // Reset countdown
+            resendTime = 60;
+            const newInterval = setInterval(() => {
+                resendTime--;
+                resendCountdown.textContent = `(${resendTime}s)`;
+                
+                if (resendTime <= 0) {
+                    clearInterval(newInterval);
+                    resendBtn.disabled = false;
+                    resendCountdown.textContent = '';
+                }
+            }, 1000);
+            
+            // Reset expiry timer
+            expiryTime = 10 * 60;
+        } else {
+            showError(data.error || 'Failed to resend OTP');
+            resendBtn.disabled = false;
+        }
+    } catch (error) {
+        console.error('Resend OTP error:', error);
+        showError('Failed to resend OTP');
+        resendBtn.disabled = false;
+    }
+});
+
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
+function showError(message) {
+    const errorMessage = document.getElementById('errorMessage');
+    errorMessage.textContent = message;
+    errorMessage.style.display = 'block';
+}
+
+function showOtpStatus(message, type) {
+    otpStatus.textContent = message;
+    otpStatus.className = `otp-status ${type}`;
+    otpStatus.style.display = 'block';
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        if (otpStatus.style.display !== 'none') {
+            otpStatus.style.display = 'none';
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}

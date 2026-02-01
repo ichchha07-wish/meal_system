@@ -1,0 +1,563 @@
+{% extends "base.html" %}
+
+{% block title %}Browse Meals - Food Distribution System{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+
+<div class="page-container">
+    <!-- Header -->
+    <header class="page-header">
+        <button class="btn-back" onclick="window.location.href='/dashboard/beneficiary/'">
+            ← Back
+        </button>
+        <h1>🍽️ Browse Meals</h1>
+        <button class="btn-filter" id="filterBtn">🔍 Filter</button>
+    </header>
+
+    <!-- Search Bar -->
+    <div class="search-bar">
+        <input 
+            type="text" 
+            id="searchInput" 
+            placeholder="Search by meal name or location..."
+            class="search-input"
+        >
+        <button class="btn-search">Search</button>
+    </div>
+
+    <!-- Category Filter -->
+    <div class="category-tabs">
+        <button class="cat-btn active" data-type="all">All</button>
+        <button class="cat-btn" data-type="breakfast">Breakfast</button>
+        <button class="cat-btn" data-type="lunch">Lunch</button>
+        <button class="cat-btn" data-type="dinner">Dinner</button>
+        <button class="cat-btn" data-type="snack">Snacks</button>
+    </div>
+
+    <!-- Meals Grid -->
+    <div class="content-card">
+        <!-- Loading State -->
+        <div class="loading-state" id="loadingState">
+            <div class="spinner"></div>
+            <p>Finding available meals...</p>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <div class="empty-icon">🍽️</div>
+            <h3>No meals found</h3>
+            <p>Try adjusting your filters or check back later</p>
+        </div>
+
+        <!-- Meals Grid -->
+        <div class="meals-grid" id="mealsGrid" style="display: none;">
+            <!-- Meals will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<!-- Meal Detail Modal -->
+<div id="mealModal" class="modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-card">
+        <button class="modal-close" id="modalCloseBtn">&times;</button>
+        
+        <div class="modal-header">
+            <h2 id="modalMealName">Meal Name</h2>
+            <span class="meal-badge" id="modalBadge">Available</span>
+        </div>
+        
+        <div class="modal-body">
+            <div class="detail-row">
+                <span class="detail-icon">📍</span>
+                <div class="detail-content">
+                    <span class="detail-label">Location</span>
+                    <span class="detail-value" id="modalLocation">--</span>
+                </div>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-icon">🕐</span>
+                <div class="detail-content">
+                    <span class="detail-label">Serving Time</span>
+                    <span class="detail-value" id="modalTime">--</span>
+                </div>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-icon">📦</span>
+                <div class="detail-content">
+                    <span class="detail-label">Available Servings</span>
+                    <span class="detail-value" id="modalQuantity">--</span>
+                </div>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-icon">👤</span>
+                <div class="detail-content">
+                    <span class="detail-label">Provider</span>
+                    <span class="detail-value" id="modalProvider">--</span>
+                </div>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-icon">📝</span>
+                <div class="detail-content">
+                    <span class="detail-label">Description</span>
+                    <span class="detail-value" id="modalDescription">--</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn-modal btn-add-cart" id="modalAddCartBtn">
+                🛒 Add to Cart
+            </button>
+            <button class="btn-modal btn-claim" id="modalClaimBtn">
+                ✓ Claim Now
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+:root {
+    --primary: #4CAF50;
+    --secondary: #5AB9EA;
+    --danger: #E74C3C;
+    --text-dark: #2C3E50;
+    --text-light: #7F8C8D;
+    --bg: #ECF0F1;
+    --white: #FFFFFF;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+}
+
+.page-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.page-header {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.page-header h1 {
+    font-size: 24px;
+    color: var(--text-dark);
+}
+
+.btn-back, .btn-filter {
+    background: var(--secondary);
+    color: var(--white);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.btn-back:hover, .btn-filter:hover {
+    transform: translateY(-2px);
+}
+
+.search-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.search-input {
+    flex: 1;
+    padding: 15px;
+    border: 2px solid var(--white);
+    border-radius: 12px;
+    font-size: 15px;
+    background: var(--white);
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--secondary);
+}
+
+.btn-search {
+    background: var(--primary);
+    color: var(--white);
+    border: none;
+    padding: 15px 30px;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-search:hover {
+    background: #45a049;
+}
+
+.category-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    background: var(--white);
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    overflow-x: auto;
+}
+
+.cat-btn {
+    background: transparent;
+    border: 2px solid var(--bg);
+    padding: 10px 20px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-dark);
+    white-space: nowrap;
+    transition: all 0.3s;
+}
+
+.cat-btn:hover {
+    border-color: var(--secondary);
+}
+
+.cat-btn.active {
+    background: var(--secondary);
+    color: var(--white);
+    border-color: var(--secondary);
+}
+
+.content-card {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    min-height: 500px;
+}
+
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+}
+
+.spinner {
+    border: 4px solid var(--bg);
+    border-top: 4px solid var(--secondary);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 80px 20px;
+}
+
+.empty-icon {
+    font-size: 80px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    font-size: 22px;
+    color: var(--text-dark);
+    margin-bottom: 10px;
+}
+
+.empty-state p {
+    color: var(--text-light);
+}
+
+.meals-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.meal-card {
+    background: var(--white);
+    border: 2px solid var(--bg);
+    border-radius: 12px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.meal-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    border-color: var(--secondary);
+}
+
+.meal-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+}
+
+.meal-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.meal-type {
+    background: var(--bg);
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.meal-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-light);
+}
+
+.meal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 15px;
+    border-top: 1px solid var(--bg);
+}
+
+.quantity-badge {
+    background: var(--primary);
+    color: var(--white);
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.btn-view {
+    background: var(--secondary);
+    color: var(--white);
+    border: none;
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-view:hover {
+    background: #4a9fd6;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.modal-card {
+    background: var(--white);
+    border-radius: 16px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    z-index: 1001;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: var(--bg);
+    border: none;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.modal-header {
+    padding: 25px 25px 15px;
+    border-bottom: 1px solid var(--bg);
+}
+
+.modal-header h2 {
+    font-size: 22px;
+    color: var(--text-dark);
+    margin-bottom: 10px;
+}
+
+.meal-badge {
+    background: var(--primary);
+    color: var(--white);
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.modal-body {
+    padding: 25px;
+}
+
+.detail-row {
+    display: flex;
+    gap: 15px;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--bg);
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-icon {
+    font-size: 24px;
+}
+
+.detail-content {
+    flex: 1;
+}
+
+.detail-label {
+    font-size: 12px;
+    color: var(--text-light);
+    font-weight: 600;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.detail-value {
+    font-size: 15px;
+    color: var(--text-dark);
+    font-weight: 600;
+}
+
+.modal-footer {
+    padding: 20px 25px;
+    border-top: 1px solid var(--bg);
+    display: flex;
+    gap: 10px;
+}
+
+.btn-modal {
+    flex: 1;
+    border: none;
+    padding: 15px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-add-cart {
+    background: var(--bg);
+    color: var(--text-dark);
+}
+
+.btn-add-cart:hover {
+    background: #d5d8dc;
+}
+
+.btn-claim {
+    background: var(--primary);
+    color: var(--white);
+}
+
+.btn-claim:hover {
+    background: #45a049;
+}
+
+@media (max-width: 768px) {
+    .meals-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .category-tabs {
+        overflow-x: scroll;
+    }
+}
+</style>
+
+<script src="/static/js/meals.js"></script>
+
+{% endblock %}

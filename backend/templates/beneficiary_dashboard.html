@@ -1,0 +1,1427 @@
+{% extends "base.html" %}
+
+{% block title %}Beneficiary Dashboard - Food Distribution System{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+
+<div class="dashboard-container">
+    <!-- Top Header -->
+    <header class="top-header">
+        <div class="header-brand">
+            <span class="brand-icon">🍽️</span>
+            <span class="brand-text">COMMUNITY MEAL SYSTEM</span>
+        </div>
+        <div class="header-user">
+            <span class="welcome-text">Hello, <strong id="username">Loading...</strong>!</span>
+            <span class="datetime" id="currentDateTime"></span>
+            <div class="location-status" id="locationStatus">
+                <span class="status-icon">📍</span>
+                <span class="status-text">Finding location...</span>
+            </div>
+            <button class="btn-logout" id="logoutBtn">🚪</button>
+        </div>
+    </header>
+
+    <!-- Tab Navigation -->
+    <div class="tab-nav">
+        <button class="tab-btn active" data-tab="meals">
+            <span class="tab-icon">🍽️</span>
+            Available Meals
+        </button>
+        <button class="tab-btn" data-tab="nearby">
+            <span class="tab-icon">📍</span>
+            Nearby Providers
+        </button>
+        <button class="tab-btn" data-tab="map">
+            <span class="tab-icon">🗺️</span>
+            Map View
+        </button>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+        
+        <!-- MEALS TAB -->
+        <div id="mealsTab" class="tab-content active">
+            <!-- Loading State -->
+            <div id="loadingState" class="loading-state">
+                <div class="spinner"></div>
+                <p>Loading available meals...</p>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <div class="empty-icon">🍽️</div>
+                <h3>No meals available right now</h3>
+                <p>Check back soon for new meal postings from providers</p>
+            </div>
+
+            <!-- Error Container -->
+            <div id="errorContainer" style="display: none;"></div>
+
+            <!-- Meals Grid -->
+            <div id="mealsGrid" class="meals-container" style="display: none;"></div>
+        </div>
+
+        <!-- NEARBY PROVIDERS TAB -->
+        <div id="nearbyTab" class="tab-content" style="display: none;">
+            <div class="nearby-container">
+                <!-- Proximity Filter -->
+                <div class="proximity-filter">
+                    <label for="proximityRadius">Search Radius:</label>
+                    <select id="proximityRadius">
+                        <option value="1">1 km</option>
+                        <option value="2">2 km</option>
+                        <option value="5" selected>5 km</option>
+                        <option value="10">10 km</option>
+                        <option value="20">20 km</option>
+                    </select>
+                    <button class="btn-refresh" id="refreshProvidersBtn">🔄 Refresh</button>
+                </div>
+
+                <!-- Loading State -->
+                <div id="nearbyLoadingState" class="loading-state" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Finding nearby providers...</p>
+                </div>
+
+                <!-- Empty State -->
+                <div id="nearbyEmptyState" class="empty-state" style="display: none;">
+                    <div class="empty-icon">📍</div>
+                    <h3>No providers nearby</h3>
+                    <p>Try increasing the search radius or check back later</p>
+                </div>
+
+                <!-- Nearby Providers List -->
+                <div id="nearbyProvidersList" class="providers-list" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- MAP TAB -->
+        <div id="mapTab" class="tab-content" style="display: none;">
+            <div class="map-container">
+                <div id="mealsMap" class="meals-map"></div>
+                <div class="map-controls">
+                    <button id="mapCenterBtn" class="map-control-btn" title="Center on my location">📍</button>
+                    <button id="mapZoomInBtn" class="map-control-btn" title="Zoom in">+</button>
+                    <button id="mapZoomOutBtn" class="map-control-btn" title="Zoom out">−</button>
+                </div>
+                <div class="map-legend">
+                    <div class="legend-title">🗺️ Map Legend</div>
+                    <div class="legend-item">
+                        <span class="legend-marker" style="background: #4CAF50;"></span>
+                        <span>Meal Location</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-marker" style="background: #FF9800;"></span>
+                        <span>Food Provider</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-marker" style="background: #5AB9EA;"></span>
+                        <span>Your Location</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bottom Action Bar -->
+    <div class="bottom-bar">
+        <button class="action-btn" id="feedbackBtn">
+            <span class="action-icon">💬</span>
+            Feedback
+        </button>
+        <button class="action-btn" id="cartBtn">
+            <span class="action-icon">🛒</span>
+            Cart
+        </button>
+        <button class="action-btn" id="historyBtn">
+            <span class="action-icon">📜</span>
+            History
+        </button>
+    </div>
+</div>
+
+<!-- Meal Detail Modal -->
+<div id="mealModal" class="modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-card">
+        <button class="modal-close" id="modalCloseBtn">&times;</button>
+        
+        <div class="modal-header">
+            <h2 id="modalMealName">Meal Name</h2>
+            <span class="meal-badge" id="modalBadge">Available</span>
+        </div>
+
+        <!-- Meal Image -->
+        <div id="mealImageContainer" class="meal-image-container" style="display: none;">
+            <img id="mealImage" src="" alt="Meal" class="meal-image">
+        </div>
+        
+        <div class="modal-body">
+            <div class="detail-row">
+                <span class="detail-icon">📍</span>
+                <div class="detail-content">
+                    <span class="detail-label">Location</span>
+                    <span class="detail-value" id="modalLocation">--</span>
+                </div>
+            </div>
+
+            <div class="detail-row">
+                <span class="detail-icon">📏</span>
+                <div class="detail-content">
+                    <span class="detail-label">Distance from you</span>
+                    <span class="detail-value" id="modalDistance">--</span>
+                </div>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-icon">🕐</span>
+                <div class="detail-content">
+                    <span class="detail-label">Serving Time</span>
+                    <span class="detail-value" id="modalTime">--</span>
+                </div>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-icon">📦</span>
+                <div class="detail-content">
+                    <span class="detail-label">Available Servings</span>
+                    <span class="detail-value" id="modalQuantity">--</span>
+                </div>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-icon">👤</span>
+                <div class="detail-content">
+                    <span class="detail-label">Provider</span>
+                    <span class="detail-value" id="modalProvider">--</span>
+                </div>
+            </div>
+
+            <div class="detail-row">
+                <span class="detail-icon">📱</span>
+                <div class="detail-content">
+                    <span class="detail-label">Contact</span>
+                    <span class="detail-value" id="modalContact">--</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn-claim" id="modalClaimBtn">
+                <span class="btn-icon">✓</span>
+                Claim This Meal
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Provider Detail Modal -->
+<div id="providerModal" class="modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-card">
+        <button class="modal-close" id="providerModalCloseBtn">&times;</button>
+        
+        <div class="modal-header">
+            <h2 id="providerName">Provider Name</h2>
+        </div>
+        
+        <div class="modal-body">
+            <div class="detail-row">
+                <span class="detail-icon">📍</span>
+                <div class="detail-content">
+                    <span class="detail-label">Location</span>
+                    <span class="detail-value" id="providerLocation">--</span>
+                </div>
+            </div>
+
+            <div class="detail-row">
+                <span class="detail-icon">📏</span>
+                <div class="detail-content">
+                    <span class="detail-label">Distance</span>
+                    <span class="detail-value" id="providerDistance">--</span>
+                </div>
+            </div>
+
+            <div class="detail-row">
+                <span class="detail-icon">📱</span>
+                <div class="detail-content">
+                    <span class="detail-label">Contact</span>
+                    <span class="detail-value" id="providerContact">--</span>
+                </div>
+            </div>
+
+            <div class="detail-row">
+                <span class="detail-icon">🍽️</span>
+                <div class="detail-content">
+                    <span class="detail-label">Available Meals</span>
+                    <span class="detail-value" id="providerMealCount">--</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn-claim" id="providerViewMealsBtn">
+                <span class="btn-icon">🍽️</span>
+                View Their Meals
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- OTP Confirmation Modal -->
+<div id="otpModal" class="modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-card otp-modal-card">
+        <button class="modal-close" id="otpModalCloseBtn">&times;</button>
+        
+        <div class="otp-header">
+            <div class="otp-success-icon">✅</div>
+            <h2>Meal Claimed Successfully!</h2>
+            <p class="otp-subtitle">Show this OTP to the provider to collect your meal</p>
+        </div>
+        
+        <div class="otp-display-section">
+            <div class="otp-label">Your OTP Code</div>
+            <div class="otp-code" id="displayOTP">1234</div>
+            <button class="btn-copy-otp" id="copyOTPBtn">📋 Copy OTP</button>
+        </div>
+        
+        <div class="otp-info-section">
+            <div class="info-card">
+                <div class="info-icon">🎫</div>
+                <div class="info-content">
+                    <div class="info-label" id="otpClaimId">Claim ID: #12345</div>
+                </div>
+            </div>
+            
+            <div class="info-card">
+                <div class="info-icon">🍽️</div>
+                <div class="info-content">
+                    <div class="info-label">Meal</div>
+                    <div class="info-value" id="otpMealName">--</div>
+                </div>
+            </div>
+            
+            <div class="info-card">
+                <div class="info-icon">📍</div>
+                <div class="info-content">
+                    <div class="info-label">Location</div>
+                    <div class="info-value" id="otpLocation">--</div>
+                </div>
+            </div>
+            
+            <div class="info-card">
+                <div class="info-icon">🕐</div>
+                <div class="info-content">
+                    <div class="info-label">Collection Time</div>
+                    <div class="info-value" id="otpTime">--</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="otp-instructions">
+            <h4>📋 Instructions:</h4>
+            <ol>
+                <li>Save or remember this OTP code</li>
+                <li>Visit the provider at the specified location and time</li>
+                <li>Show this OTP to confirm your meal collection</li>
+                <li>Provider will verify and provide your meal</li>
+            </ol>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn-claim" id="otpModalCloseBtn2">
+                <span class="btn-icon">✓</span>
+                I've Saved the OTP
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* ===== MODERN BENEFICIARY DASHBOARD STYLES ===== */
+
+:root {
+    --primary-green: #4CAF50;
+    --primary-blue: #5AB9EA;
+    --primary-orange: #FF9800;
+    --danger-red: #E74C3C;
+    --text-dark: #2C3E50;
+    --text-light: #7F8C8D;
+    --bg-light: #ECF0F1;
+    --white: #FFFFFF;
+    --shadow: 0 2px 8px rgba(0,0,0,0.1);
+    --shadow-lg: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+}
+
+.dashboard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ===== TOP HEADER ===== */
+.top-header {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 15px 25px;
+    box-shadow: var(--shadow);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.brand-icon {
+    font-size: 28px;
+}
+
+.brand-text {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-dark);
+    letter-spacing: 0.5px;
+}
+
+.header-user {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.welcome-text {
+    font-size: 14px;
+    color: var(--text-dark);
+}
+
+.datetime {
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+.location-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--bg-light);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--text-dark);
+}
+
+.location-status.active {
+    background: #d4edda;
+    color: #155724;
+}
+
+.location-status.error {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.status-icon {
+    font-size: 16px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.btn-logout {
+    background: var(--danger-red);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-logout:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+}
+
+/* ===== TAB NAVIGATION ===== */
+.tab-nav {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.tab-btn {
+    flex: 1;
+    min-width: 150px;
+    background: var(--white);
+    border: 2px solid transparent;
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-dark);
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: var(--shadow);
+}
+
+.tab-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.tab-btn.active {
+    background: var(--primary-blue);
+    color: var(--white);
+    border-color: var(--primary-blue);
+}
+
+.tab-icon {
+    font-size: 18px;
+}
+
+/* ===== MAIN CONTENT ===== */
+.main-content {
+    flex: 1;
+    background: var(--white);
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+    min-height: 400px;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== LOADING STATE ===== */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+}
+
+.spinner {
+    border: 4px solid var(--bg-light);
+    border-top: 4px solid var(--primary-blue);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-state p {
+    color: var(--text-light);
+    font-size: 14px;
+}
+
+/* ===== EMPTY STATE ===== */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+    text-align: center;
+}
+
+.empty-icon {
+    font-size: 80px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    font-size: 20px;
+    color: var(--text-dark);
+    margin-bottom: 10px;
+}
+
+.empty-state p {
+    color: var(--text-light);
+    font-size: 14px;
+}
+
+/* ===== ERROR CARD ===== */
+.error-card {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.error-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+}
+
+.error-card h3 {
+    color: #c33;
+    margin-bottom: 10px;
+}
+
+.error-card p {
+    color: #666;
+    margin-bottom: 20px;
+}
+
+.btn-retry {
+    background: #2196F3;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.btn-retry:hover {
+    background: #1976D2;
+}
+
+/* ===== MEALS GRID ===== */
+.meals-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+.meal-card {
+    background: var(--white);
+    border: 2px solid var(--bg-light);
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+}
+
+.meal-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary-blue);
+}
+
+.meal-image-thumb {
+    width: 100%;
+    height: 180px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 48px;
+}
+
+.meal-image-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.meal-card-content {
+    padding: 20px;
+}
+
+.meal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.meal-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 5px;
+    flex: 1;
+}
+
+.meal-distance {
+    font-size: 12px;
+    background: #d4edda;
+    color: #155724;
+    padding: 4px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    margin-left: 10px;
+}
+
+.meal-details {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-light);
+}
+
+.meal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--bg-light);
+    gap: 10px;
+}
+
+.quantity-badge {
+    background: var(--bg-light);
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.btn-add {
+    background: var(--primary-green);
+    color: var(--white);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+.btn-add:hover {
+    background: #45a049;
+    transform: scale(1.05);
+}
+
+/* ===== NEARBY PROVIDERS ===== */
+.nearby-container {
+    width: 100%;
+}
+
+.proximity-filter {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 25px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.proximity-filter label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.proximity-filter select {
+    padding: 10px 15px;
+    border: 2px solid var(--bg-light);
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.proximity-filter select:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+}
+
+.btn-refresh {
+    background: var(--primary-blue);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-refresh:hover {
+    background: #4a9fd6;
+}
+
+.providers-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.provider-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 25px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: var(--shadow);
+}
+
+.provider-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+}
+
+.provider-header {
+    margin-bottom: 15px;
+}
+
+.provider-name {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.provider-info {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 14px;
+}
+
+.provider-info-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.provider-contact {
+    font-size: 13px;
+    opacity: 0.9;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-view-provider {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid white;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: 15px;
+    width: 100%;
+}
+
+.btn-view-provider:hover {
+    background: white;
+    color: #667eea;
+}
+
+/* ===== MAP VIEW ===== */
+.map-container {
+    position: relative;
+    width: 100%;
+    height: 600px;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.meals-map {
+    width: 100%;
+    height: 100%;
+    border-radius: 12px;
+}
+
+.map-controls {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 1000;
+}
+
+.map-control-btn {
+    background: white;
+    border: 2px solid var(--bg-light);
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: var(--shadow);
+}
+
+.map-control-btn:hover {
+    background: var(--primary-blue);
+    color: white;
+    border-color: var(--primary-blue);
+}
+
+.map-legend {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    z-index: 1000;
+}
+
+.legend-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text-dark);
+    margin-bottom: 10px;
+    border-bottom: 2px solid var(--bg-light);
+    padding-bottom: 8px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text-dark);
+    margin-bottom: 8px;
+}
+
+.legend-item:last-child {
+    margin-bottom: 0;
+}
+
+.legend-marker {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* ===== MEAL IMAGE ===== */
+.meal-image-container {
+    width: 100%;
+    height: 250px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.meal-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ===== BOTTOM BAR ===== */
+.bottom-bar {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: var(--shadow);
+    display: flex;
+    justify-content: space-around;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.action-btn {
+    background: transparent;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--text-light);
+    cursor: pointer;
+    padding: 10px 20px;
+    border-radius: 8px;
+    transition: all 0.3s;
+    flex: 1;
+    min-width: 80px;
+}
+
+.action-btn:hover {
+    background: var(--bg-light);
+}
+
+.action-btn.active {
+    background: var(--primary-green);
+    color: var(--white);
+}
+
+.action-icon {
+    font-size: 24px;
+}
+
+/* ===== MODAL ===== */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.modal-card {
+    background: var(--white);
+    border-radius: 16px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    z-index: 1001;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: var(--bg-light);
+    border: none;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    font-size: 24px;
+    cursor: pointer;
+    transition: all 0.3s;
+    z-index: 10;
+}
+
+.modal-close:hover {
+    background: var(--danger-red);
+    color: var(--white);
+}
+
+.modal-header {
+    padding: 25px 25px 15px;
+    border-bottom: 1px solid var(--bg-light);
+}
+
+.modal-header h2 {
+    font-size: 22px;
+    color: var(--text-dark);
+    margin-bottom: 10px;
+}
+
+.meal-badge {
+    background: var(--primary-green);
+    color: var(--white);
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.modal-body {
+    padding: 25px;
+}
+
+.detail-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--bg-light);
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-icon {
+    font-size: 24px;
+    min-width: 30px;
+}
+
+.detail-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.detail-label {
+    font-size: 12px;
+    color: var(--text-light);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.detail-value {
+    font-size: 15px;
+    color: var(--text-dark);
+    font-weight: 600;
+}
+
+.modal-footer {
+    padding: 20px 25px;
+    border-top: 1px solid var(--bg-light);
+}
+
+.btn-claim {
+    width: 100%;
+    background: var(--primary-green);
+    color: var(--white);
+    border: none;
+    border-radius: 12px;
+    padding: 15px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.3s;
+}
+
+.btn-claim:hover {
+    background: #45a049;
+    transform: scale(1.02);
+}
+
+.btn-claim:disabled {
+    background: var(--text-light);
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-icon {
+    font-size: 20px;
+}
+
+/* ===== OTP MODAL STYLES ===== */
+.otp-modal-card {
+    max-width: 600px;
+}
+
+.otp-header {
+    text-align: center;
+    padding: 30px 25px 20px;
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    color: white;
+}
+
+.otp-success-icon {
+    font-size: 60px;
+    margin-bottom: 15px;
+    animation: scaleIn 0.5s ease;
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.otp-header h2 {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.otp-subtitle {
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.otp-display-section {
+    padding: 30px 25px;
+    text-align: center;
+    background: #f8f9fa;
+    border-bottom: 1px solid var(--bg-light);
+}
+
+.otp-label {
+    font-size: 14px;
+    color: var(--text-light);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 15px;
+}
+
+.otp-code {
+    font-size: 48px;
+    font-weight: 900;
+    color: var(--primary-green);
+    letter-spacing: 8px;
+    font-family: 'Courier New', monospace;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    border: 3px dashed var(--primary-green);
+    margin-bottom: 20px;
+    user-select: all;
+}
+
+.btn-copy-otp {
+    background: var(--primary-blue);
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-copy-otp:hover {
+    background: #4a9fd6;
+    transform: scale(1.05);
+}
+
+.otp-info-section {
+    padding: 25px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.info-card {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 10px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.info-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.info-content {
+    flex: 1;
+}
+
+.info-label {
+    font-size: 11px;
+    color: var(--text-light);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+}
+
+.info-value {
+    font-size: 14px;
+    color: var(--text-dark);
+    font-weight: 600;
+}
+
+.otp-instructions {
+    padding: 25px;
+    background: #fff8e1;
+    border-top: 1px solid var(--bg-light);
+}
+
+.otp-instructions h4 {
+    font-size: 16px;
+    color: var(--text-dark);
+    margin-bottom: 15px;
+}
+
+.otp-instructions ol {
+    margin-left: 20px;
+}
+
+.otp-instructions li {
+    font-size: 14px;
+    color: #5d4037;
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .dashboard-container {
+        padding: 10px;
+    }
+
+    .top-header {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+
+    .header-user {
+        justify-content: center;
+    }
+
+    .tab-nav {
+        flex-direction: column;
+    }
+
+    .tab-btn {
+        min-width: unset;
+    }
+
+    .meals-container {
+        grid-template-columns: 1fr;
+    }
+
+    .providers-list {
+        grid-template-columns: 1fr;
+    }
+
+    .map-container {
+        height: 400px;
+    }
+
+    .proximity-filter {
+        flex-direction: column;
+    }
+
+    .proximity-filter select {
+        width: 100%;
+    }
+
+    .btn-refresh {
+        width: 100%;
+    }
+    
+    .otp-info-section {
+        grid-template-columns: 1fr;
+    }
+    
+    .otp-code {
+        font-size: 36px;
+        letter-spacing: 4px;
+    }
+}
+
+/* Toast notification animations */
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+</style>
+
+<!-- Leaflet Map Library -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<script src="/static/js/beneficiary.js"></script>
+{% endblock %}

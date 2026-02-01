@@ -1,0 +1,475 @@
+{% extends "base.html" %}
+
+{% block title %}History - Food Distribution System{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+
+<div class="page-container">
+    <!-- Header -->
+    <header class="page-header">
+        <button class="btn-back" onclick="window.location.href='/dashboard/beneficiary/'">
+            ← Back
+        </button>
+        <h1>📜 Claim History</h1>
+        <div></div>
+    </header>
+
+    <!-- Filter Tabs -->
+    <div class="filter-tabs">
+        <button class="tab-btn active" data-status="all">All</button>
+        <button class="tab-btn" data-status="confirmed">Confirmed</button>
+        <button class="tab-btn" data-status="collected">Collected</button>
+        <button class="tab-btn" data-status="cancelled">Cancelled</button>
+    </div>
+
+    <!-- History Content -->
+    <div class="content-card">
+        <!-- Loading State -->
+        <div class="loading-state" id="loadingState">
+            <div class="spinner"></div>
+            <p>Loading your history...</p>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <div class="empty-icon">📜</div>
+            <h3>No claim history yet</h3>
+            <p>Your claimed meals will appear here</p>
+            <button class="btn-browse" onclick="window.location.href='/dashboard/beneficiary/'">
+                Browse Meals
+            </button>
+        </div>
+
+        <!-- History Items -->
+        <div class="history-list" id="historyList" style="display: none;">
+            <!-- History items will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<style>
+:root {
+    --primary: #4CAF50;
+    --secondary: #5AB9EA;
+    --danger: #E74C3C;
+    --warning: #F39C12;
+    --text-dark: #2C3E50;
+    --text-light: #7F8C8D;
+    --bg: #ECF0F1;
+    --white: #FFFFFF;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+}
+
+.page-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.page-header {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.page-header h1 {
+    font-size: 24px;
+    color: var(--text-dark);
+}
+
+.btn-back {
+    background: var(--secondary);
+    color: var(--white);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.btn-back:hover {
+    transform: translateY(-2px);
+}
+
+.filter-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    background: var(--white);
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.tab-btn {
+    flex: 1;
+    background: transparent;
+    border: 2px solid var(--bg);
+    padding: 10px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-dark);
+    transition: all 0.3s;
+}
+
+.tab-btn:hover {
+    border-color: var(--secondary);
+}
+
+.tab-btn.active {
+    background: var(--secondary);
+    color: var(--white);
+    border-color: var(--secondary);
+}
+
+.content-card {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    min-height: 400px;
+}
+
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+}
+
+.spinner {
+    border: 4px solid var(--bg);
+    border-top: 4px solid var(--secondary);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-state p {
+    color: var(--text-light);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.empty-icon {
+    font-size: 80px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    font-size: 22px;
+    color: var(--text-dark);
+    margin-bottom: 10px;
+}
+
+.empty-state p {
+    color: var(--text-light);
+    margin-bottom: 30px;
+}
+
+.btn-browse {
+    background: var(--primary);
+    color: var(--white);
+    border: none;
+    padding: 15px 30px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-browse:hover {
+    background: #45a049;
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.history-item {
+    border: 2px solid var(--bg);
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s;
+}
+
+.history-item:hover {
+    border-color: var(--secondary);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.meal-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 5px;
+}
+
+.claim-date {
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+.status-badge {
+    padding: 6px 15px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-confirmed {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-collected {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.status-cancelled {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.status-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.history-details {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-light);
+}
+
+.history-footer {
+    display: flex;
+    gap: 10px;
+    padding-top: 15px;
+    border-top: 1px solid var(--bg);
+}
+
+.btn-action {
+    padding: 8px 15px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-view {
+    background: var(--secondary);
+    color: var(--white);
+    border: none;
+}
+
+.btn-cancel {
+    background: transparent;
+    color: var(--danger);
+    border: 2px solid var(--danger);
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+}
+</style>
+
+<script>
+const API_BASE = '/api';
+let allClaims = [];
+let currentFilter = 'all';
+
+// Get CSRF token
+function getCsrfToken() {
+    const name = 'csrftoken';
+    let csrfToken = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                csrfToken = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return csrfToken;
+}
+
+// Load history
+async function loadHistory() {
+    const loadingState = document.getElementById('loadingState');
+    const emptyState = document.getElementById('emptyState');
+    const historyList = document.getElementById('historyList');
+    
+    loadingState.style.display = 'flex';
+    emptyState.style.display = 'none';
+    historyList.style.display = 'none';
+    
+    try {
+        const response = await fetch(`${API_BASE}/meals/claims/`, {
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            allClaims = Array.isArray(data) ? data : (data.results || []);
+            renderHistory();
+        } else {
+            throw new Error('Failed to load history');
+        }
+    } catch (error) {
+        console.error('Error loading history:', error);
+        loadingState.style.display = 'none';
+        emptyState.style.display = 'block';
+    }
+}
+
+// Render history
+function renderHistory() {
+    const loadingState = document.getElementById('loadingState');
+    const emptyState = document.getElementById('emptyState');
+    const historyList = document.getElementById('historyList');
+    
+    loadingState.style.display = 'none';
+    
+    let filtered = allClaims;
+    if (currentFilter !== 'all') {
+        filtered = allClaims.filter(claim => claim.status === currentFilter);
+    }
+    
+    if (filtered.length === 0) {
+        emptyState.style.display = 'block';
+        historyList.style.display = 'none';
+        return;
+    }
+    
+    emptyState.style.display = 'none';
+    historyList.style.display = 'flex';
+    
+    historyList.innerHTML = filtered.map(claim => `
+        <div class="history-item">
+            <div class="history-header">
+                <div>
+                    <div class="meal-name">🍽️ ${claim.meal_name || 'Meal'}</div>
+                    <div class="claim-date">Claimed on ${formatDate(claim.claimed_at)}</div>
+                </div>
+                <span class="status-badge status-${claim.status}">${claim.status}</span>
+            </div>
+            
+            <div class="history-details">
+                <div class="detail-item">
+                    <span>📍</span>
+                    <span>${claim.meal_location || 'Location'}</span>
+                </div>
+                <div class="detail-item">
+                    <span>🕐</span>
+                    <span>${formatTime(claim.meal_serving_time || '12:00:00')}</span>
+                </div>
+                <div class="detail-item">
+                    <span>📦</span>
+                    <span>${claim.quantity_claimed} serving(s)</span>
+                </div>
+                <div class="detail-item">
+                    <span>🔑</span>
+                    <span>${claim.confirmation_code || 'N/A'}</span>
+                </div>
+            </div>
+            
+            <div class="history-footer">
+                <button class="btn-action btn-view">View Details</button>
+                ${claim.status === 'confirmed' ? '<button class="btn-action btn-cancel">Cancel</button>' : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+// Filter tabs
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        currentFilter = this.dataset.status;
+        renderHistory();
+    });
+});
+
+// Format date
+function formatDate(dateStr) {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+    });
+}
+
+// Format time
+function formatTime(timeStr) {
+    return new Date('2000-01-01 ' + timeStr).toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    });
+}
+
+// Initialize
+loadHistory();
+</script>
+
+{% endblock %}

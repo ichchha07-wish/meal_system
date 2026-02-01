@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Food Distribution System{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <!-- Logo Section -->
+        <div class="logo-container">
+            <div class="logo-icon">🍽️</div>
+        </div>
+        
+        <!-- Title -->
+        <h1 class="auth-title">Food Distribution System</h1>
+        <p class="auth-subtitle">SDG Goal 2: Zero Hunger</p>
+        
+        <!-- Role Selector Tabs -->
+        <div class="role-selector">
+            <button type="button" class="role-tab active" data-role="beneficiary">
+                🛵 I Need Meals
+            </button>
+            <button type="button" class="role-tab" data-role="provider">
+                🍳 I Donate Meals
+            </button>
+        </div>
+        
+        <!-- Login Form -->
+        <form id="loginForm" class="auth-form" autocomplete="off">
+            {% csrf_token %}
+            
+            <!-- Hidden role input -->
+            <input type="hidden" id="selectedRole" name="role" value="beneficiary">
+            
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    class="form-input" 
+                    placeholder="Enter your username"
+                    required
+                    autocomplete="username"
+                >
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    class="form-input" 
+                    placeholder="Enter your password"
+                    required
+                    autocomplete="current-password"
+                >
+            </div>
+            
+            <!-- Error Message -->
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+            
+            <!-- Submit Button -->
+            <button type="submit" class="btn btn-primary" id="loginBtn">
+                <span class="btn-text">Login</span>
+                <span class="btn-loader" style="display: none;">🔄</span>
+            </button>
+        </form>
+        
+        <!-- Register Link -->
+        <div class="auth-footer">
+            <p>Don't have an account? <a href="/register/" class="link-primary">Register here</a></p>
+        </div>
+        
+        <!-- Info Text -->
+        <div class="info-text">
+            <p>ℹ️ Select your role above, then enter your credentials. You'll receive an OTP on your registered phone number.</p>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Role Selector Styles */
+.role-selector {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.role-tab {
+    flex: 1;
+    min-width: 140px;
+    padding: 12px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    background: white;
+    color: #6b7280;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.role-tab:hover {
+    border-color: #10b981;
+    color: #10b981;
+    background: #f0fdf4;
+}
+
+.role-tab.active {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border-color: #059669;
+    box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
+}
+
+.role-tab.active:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+</style>
+
+<script>
+// ============================================================
+// ROLE SELECTOR LOGIC
+// ============================================================
+const roleTabs = document.querySelectorAll('.role-tab');
+const selectedRoleInput = document.getElementById('selectedRole');
+
+roleTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        // Remove active class from all tabs
+        roleTabs.forEach(t => t.classList.remove('active'));
+        
+        // Add active class to clicked tab
+        tab.classList.add('active');
+        
+        // Update hidden input
+        selectedRoleInput.value = tab.dataset.role;
+        
+        console.log('✅ Selected role:', tab.dataset.role);
+    });
+});
+
+// ============================================================
+// LOGIN FORM SUBMISSION - PREVENT DOUBLE SUBMISSION
+// ============================================================
+let isSubmitting = false;
+
+const loginForm = document.getElementById('loginForm');
+const loginBtn = document.getElementById('loginBtn');
+const errorMessage = document.getElementById('errorMessage');
+
+loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    // ✅ PREVENT DOUBLE SUBMISSION
+    if (isSubmitting) {
+        console.warn('⚠️ Request already in progress - ignoring duplicate');
+        return;
+    }
+    
+    // Mark as submitting
+    isSubmitting = true;
+    
+    try {
+        // Get form data
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+        const selectedRole = document.getElementById('selectedRole').value;
+        
+        console.log('📝 Login attempt - User:', username, 'Role:', selectedRole);
+        
+        // Validation
+        if (!username || !password) {
+            showError('Please enter both username and password');
+            return;
+        }
+        
+        // ✅ Disable button
+        loginBtn.disabled = true;
+        loginBtn.querySelector('.btn-text').style.display = 'none';
+        loginBtn.querySelector('.btn-loader').style.display = 'inline';
+        errorMessage.style.display = 'none';
+        
+        // Get CSRF token from DOM
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        console.log('🔐 CSRF Token:', csrfToken.substring(0, 10) + '...');
+        console.log('📤 Sending login request...');
+        
+        // Send login request
+        const response = await fetch('/api/users/login/request-otp/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            credentials: 'include',
+            body: JSON.stringify({ 
+                username: username, 
+                password: password 
+            })
+        });
+        
+        console.log('📥 Response Status:', response.status);
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            console.log('✅ OTP generated successfully');
+            
+            // Store for OTP verification page
+            sessionStorage.setItem('pending_login_user_id', data.user_id);
+            sessionStorage.setItem('pending_login_username', username);
+            sessionStorage.setItem('selected_role', selectedRole);
+            sessionStorage.setItem('otp_purpose', 'login');
+            
+            console.log('✅ Stored in sessionStorage, redirecting...');
+            
+            // Redirect to OTP verification
+            // Check which URL works in your config
+            window.location.href = '/login/verify-otp/';
+            
+        } else {
+            console.error('❌ Login failed:', data.error);
+            showError(data.error || 'Login failed. Please check your credentials.');
+        }
+    } catch (error) {
+        console.error('❌ Error:', error);
+        showError('Connection error. Please try again.');
+    } finally {
+        // Reset flag after response (whether success or error)
+        // But only after a small delay to prevent rapid resubmission
+        setTimeout(() => {
+            isSubmitting = false;
+            
+            // Re-enable button (in case of error, user can retry)
+            loginBtn.disabled = false;
+            loginBtn.querySelector('.btn-text').style.display = 'inline';
+            loginBtn.querySelector('.btn-loader').style.display = 'none';
+        }, 300);
+    }
+});
+
+function showError(message) {
+    errorMessage.textContent = message;
+    errorMessage.style.display = 'block';
+    errorMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// ============================================================
+// Prevent accidental double submission via keyboard
+// ============================================================
+let lastSubmitTime = 0;
+
+loginForm.addEventListener('submit', (e) => {
+    const now = Date.now();
+    if (now - lastSubmitTime < 1000) {
+        console.warn('⚠️ Submissions too close together - ignoring');
+        e.preventDefault();
+        return;
+    }
+    lastSubmitTime = now;
+});
+
+// Handle Enter key behavior
+document.getElementById('password').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !isSubmitting) {
+        loginForm.dispatchEvent(new Event('submit'));
+    }
+});
+</script>
+{% endblock %}

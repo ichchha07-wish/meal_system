@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block title %}Register - Food Distribution System{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card register-card">
+        <!-- Logo Section -->
+        <div class="logo-container">
+            <div class="logo-icon">🍽️</div>
+        </div>
+        
+        <!-- Title -->
+        <h1 class="auth-title">Create Account</h1>
+        <p class="auth-subtitle">Join us in fighting hunger</p>
+        
+        <!-- Registration Form -->
+        <form id="registerForm" class="auth-form">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label for="username">Username *</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    class="form-input" 
+                    placeholder="Choose a username"
+                    required
+                    minlength="3"
+                    autocomplete="username"
+                >
+                <small class="form-hint">At least 3 characters, letters and numbers only</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email *</label>
+                <input 
+                    type="email" 
+                    id="email" 
+                    name="email" 
+                    class="form-input" 
+                    placeholder="your.email@example.com"
+                    required
+                    autocomplete="email"
+                >
+            </div>
+            
+            <div class="form-group">
+                <label for="phone_number">Phone Number *</label>
+                <input 
+                    type="tel" 
+                    id="phone_number" 
+                    name="phone_number" 
+                    class="form-input" 
+                    placeholder="10-digit mobile number"
+                    required
+                    pattern="[0-9]{10}"
+                    maxlength="10"
+                    autocomplete="tel"
+                >
+                <small class="form-hint">OTP will be sent to this number</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password *</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    class="form-input" 
+                    placeholder="Create a strong password"
+                    required
+                    minlength="6"
+                    autocomplete="new-password"
+                >
+                <small class="form-hint">At least 6 characters</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirm_password">Confirm Password *</label>
+                <input 
+                    type="password" 
+                    id="confirm_password" 
+                    name="confirm_password" 
+                    class="form-input" 
+                    placeholder="Re-enter your password"
+                    required
+                    minlength="6"
+                    autocomplete="new-password"
+                >
+            </div>
+            
+            <div class="form-group">
+                <label for="role">I am a *</label>
+                <select id="role" name="role" class="form-select" required>
+                    <option value="">-- Select Role --</option>
+                    <option value="beneficiary">Beneficiary (I need meals)</option>
+                    <option value="provider">Meal Provider (I donate meals)</option>
+                </select>
+            </div>
+            
+            <!-- Error Message -->
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+            
+            <!-- Success Message -->
+            <div id="successMessage" class="success-message" style="display: none;"></div>
+            
+            <!-- Submit Button -->
+            <button type="submit" class="btn btn-primary" id="registerBtn">
+                <span class="btn-text">Create Account</span>
+                <span class="btn-loader" style="display: none;">🔄</span>
+            </button>
+        </form>
+        
+        <!-- Login Link -->
+        <div class="auth-footer">
+            <p>Already have an account? <a href="/login/" class="link-primary">Login here</a></p>
+        </div>
+        
+        <!-- Info Text -->
+        <div class="info-text">
+            <p>ℹ️ You'll receive an OTP on your phone number for verification</p>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// GET CSRF TOKEN FROM COOKIE
+// ============================================================
+function getCsrfToken() {
+    let csrfToken = null;
+    const name = 'csrftoken';
+    
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                csrfToken = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    
+    return csrfToken;
+}
+
+// ============================================================
+// REGISTRATION FORM SUBMISSION
+// ============================================================
+let isRegistering = false;
+
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    // Prevent double submission
+    if (isRegistering) {
+        console.warn('⚠️ Registration already in progress');
+        return;
+    }
+    
+    isRegistering = true;
+    
+    const registerBtn = document.getElementById('registerBtn');
+    const btnText = registerBtn.querySelector('.btn-text');
+    const btnLoader = registerBtn.querySelector('.btn-loader');
+    const errorMessage = document.getElementById('errorMessage');
+    const successMessage = document.getElementById('successMessage');
+    
+    // Get form data
+    const username = document.getElementById('username').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const phone_number = document.getElementById('phone_number').value.trim();
+    const password = document.getElementById('password').value;
+    const confirm_password = document.getElementById('confirm_password').value;
+    const role = document.getElementById('role').value;
+    
+    console.log('📝 Registration form submitted - Username:', username);
+    
+    // Hide messages
+    errorMessage.style.display = 'none';
+    successMessage.style.display = 'none';
+    
+    // Validation
+    if (!username || !email || !phone_number || !password || !confirm_password || !role) {
+        showError('Please fill in all required fields', errorMessage);
+        isRegistering = false;
+        return;
+    }
+    
+    if (username.length < 3) {
+        showError('Username must be at least 3 characters', errorMessage);
+        isRegistering = false;
+        return;
+    }
+    
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+        showError('Username can only contain letters, numbers, and underscores', errorMessage);
+        isRegistering = false;
+        return;
+    }
+    
+    if (!/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)) {
+        showError('Please enter a valid email address', errorMessage);
+        isRegistering = false;
+        return;
+    }
+    
+    if (!/^[0-9]{10}$/.test(phone_number)) {
+        showError('Please enter a valid 10-digit phone number', errorMessage);
+        isRegistering = false;
+        return;
+    }
+    
+    if (password.length < 6) {
+        showError('Password must be at least 6 characters', errorMessage);
+        isRegistering = false;
+        return;
+    }
+    
+    if (password !== confirm_password) {
+        showError('Passwords do not match', errorMessage);
+        isRegistering = false;
+        return;
+    }
+    
+    // Show loading
+    registerBtn.disabled = true;
+    btnText.style.display = 'none';
+    btnLoader.style.display = 'inline';
+    
+    try {
+        console.log('🔐 Getting CSRF token...');
+        const csrfToken = getCsrfToken();
+        
+        if (!csrfToken) {
+            console.warn('⚠️ CSRF token not found in cookies');
+        } else {
+            console.log('✅ CSRF token found:', csrfToken.substring(0, 10) + '...');
+        }
+        
+        console.log('📤 Sending registration request...');
+        
+        const response = await fetch('/api/users/register/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken || '',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                username,
+                email,
+                phone_number,
+                password,
+                role
+            })
+        });
+        
+        console.log('📥 Response Status:', response.status);
+        
+        const data = await response.json();
+        console.log('📥 Response Data:', data);
+        
+        if (response.ok && data.success) {
+            console.log('✅ Registration successful!');
+            
+            // Store data for OTP verification BEFORE redirect
+            sessionStorage.setItem('pending_user_id', data.user_id);
+            sessionStorage.setItem('pending_username', username);
+            sessionStorage.setItem('otp_purpose', 'registration');
+            
+            console.log('✅ Data stored in sessionStorage');
+            
+            // Show success message
+            successMessage.textContent = 'Registration successful! Redirecting to OTP verification...';
+            successMessage.style.display = 'block';
+            
+            console.log('📍 Redirecting to /verify-otp/...');
+            
+            // Redirect after 1.5 seconds
+            setTimeout(() => {
+                window.location.href = '/login/verify-otp/';
+            }, 1500);
+        } else {
+            console.error('❌ Registration failed:', data.error);
+            showError(data.error || 'Registration failed. Please try again.', errorMessage);
+        }
+    } catch (error) {
+        console.error('❌ Network error:', error);
+        showError('Connection error. Please check if the backend server is running.', errorMessage);
+    } finally {
+        isRegistering = false;
+        
+        // Reset button state (only if not redirecting)
+        setTimeout(() => {
+            registerBtn.disabled = false;
+            btnText.style.display = 'inline';
+            btnLoader.style.display = 'none';
+        }, 300);
+    }
+});
+
+function showError(message, element) {
+    console.error('📢 Error:', message);
+    element.textContent = message;
+    element.style.display = 'block';
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+</script>
+{% endblock %}
