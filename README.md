@@ -219,7 +219,7 @@ DATABASE_URL=sqlite:///db.sqlite3
 # Twilio (for SMS OTP)
 TWILIO_ACCOUNT_SID=your_twilio_account_sid
 TWILIO_AUTH_TOKEN=your_twilio_auth_token
-TWILIO_PHONE_NUMBER=+1234567890
+TWILIO_PHONE_NUMBER=+91XXXXXXXXXX
 
 # Email Settings (Gmail example)
 EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
